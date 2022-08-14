@@ -3,6 +3,12 @@ import re
 from chardet.universaldetector import UniversalDetector
 from contractions import contractions_dict
 from unicodedata import normalize
+from emot.emo_unicode import EMOTICONS_EMO
+from spacy.lang.en import STOP_WORDS
+
+LC_EMOTIONS_DICT = {
+    k.lower(): " " + "_".join(v.lower().replace(",", " ").replace("or", "").split()) + " "
+    for k, v in EMOTICONS_EMO.items() if k != "oO"}
 
 """
 Initial data verification
@@ -193,21 +199,51 @@ def remove_accents(text):
     return normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii', 'ignore')
 
 
+def replace_emoticons(text):
+    """
+    Function which replaces the emoticons in text with their meaning
+    :param text: The text to modify.
+    :return: The text with emoticons converted to words.
+    """
+    for em in LC_EMOTIONS_DICT:
+        emoticon_words = LC_EMOTIONS_DICT[em]
+        text = re.sub(re.escape(em), emoticon_words, text)
+
+    return text
+
+
 def remove_special_characters(text):
     """
-    Function which removes all the special characters, besides those used for sentences (?.:!-) from text.
+    Function which removes all the special characters, besides - and _ from text.
     :param text: The text to modify.
-    :return: Text without any special characters besides sentence separators. Special characters are replaced by space.
+    :return: Text without any special characters besides - and _. Special characters are replaced by space.
     """
-    special_chars_regex = r'[^A-Za-z0-9 -\.!?:]+'
+    special_chars_regex = r'[^A-Za-z0-9 \-\_]+'
     return re.sub(special_chars_regex, ' ', text)
 
 
-def remove_extra_spaces(text):
+def remove_single_characters(text):
     """
-    Function which removes all the extra spaces from text.
+    Function which removes all the single characters from text.
     :param text: The text to modify.
-    :return: Text with one space between each word.
+    :return: Text containing words with a length >= 2.
     """
-    extra_space_regex = r' +'
-    return re.sub(extra_space_regex, ' ', text)
+    return " ".join([word for word in text.split() if len(word) > 1])
+
+
+def preprocess_text(text, stemmer):
+    new_text = text.lower()
+    new_text = expand_contractions(new_text)
+    new_text = remove_emails(new_text)
+    new_text = remove_urls(new_text)
+    new_text = remove_retweet(new_text)
+    new_text = remove_mentions(new_text)
+    new_text = remove_reply_target(new_text)
+    new_text = remove_accents(new_text)
+    new_text = replace_emoticons(new_text)
+    new_text = remove_special_characters(new_text)
+    new_text = remove_single_characters(new_text)
+    new_text = " ".join([word for word in new_text.split() if word not in STOP_WORDS])
+    new_text = " ".join([stemmer.stem(word) for word in new_text.split()])
+
+    return new_text

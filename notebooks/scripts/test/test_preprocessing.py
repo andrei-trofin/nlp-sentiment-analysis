@@ -1,7 +1,9 @@
 from unittest import TestCase
+from nltk.stem import PorterStemmer
 from preprocessing import get_avg_word_len, get_hashtags_count, get_upper_case_count, \
     expand_contractions, get_email_count, remove_emails, get_url_count, remove_urls, remove_retweet, get_mention_count,\
-    remove_mentions, is_reply, remove_reply_target, remove_accents, remove_special_characters, remove_extra_spaces
+    remove_mentions, is_reply, remove_reply_target, remove_accents, replace_emoticons, remove_special_characters,\
+    remove_single_characters, preprocess_text
 
 
 class TestPreprocessingFunctions(TestCase):
@@ -72,7 +74,7 @@ class TestPreprocessingFunctions(TestCase):
         new_text = remove_emails(text)
 
         # Then
-        self.assertEqual("I wanna check with  and  and perhaps  and  wahoo@me?com", new_text)
+        self.assertEqual("I wanna check with  and  and perhaps  and ? wahoo@me?com", new_text)
 
     def test_get_url_count(self):
         # Given
@@ -158,22 +160,58 @@ class TestPreprocessingFunctions(TestCase):
         # Then
         self.assertEqual("da, e, i, o, u, a, e, i, o, u, y, a, e, i, o, u, a, n, o, a, e, i, o, u, y, a, c", count)
 
+    def test_replace_emoticons(self):
+        # Given
+        text1 = "ayee m8 come here :d:d i wanna see you :)) let's go on a trip :o3:o"
+        text2 = "@billyraycyrus hey daddy ;) (jk miley!) wooh where i am it's so ugly cuz there's a lot of garbage  " \
+                "have a great day daddy ;) xd (again jk)"
+
+        # When
+        new_text1 = replace_emoticons(text1)
+        new_text2 = replace_emoticons(text2)
+
+        # Then
+        self.assertEqual("ayee m8 come here  laughing_big_grin_laugh_with_glasses  laughing_big_grin_laugh_with_glasses"
+                         "  i wanna see you  happy_face_smiley ) let's go on a trip  surprise 3 surprise ",
+                         new_text1)
+        self.assertEqual("@billyraycyrus hey daddy  wink_smirk  (jk miley!) wooh where "
+                         "i am it's so ugly cuz there's a lot of garbage  have a great day daddy  wink_smirk"
+                         "   laughing_big_grin_laugh_with_glasses  (again jk)",
+                         new_text2)
+
     def test_remove_special_characters(self):
         # Given
-        text = "So cool dude ... hope u can be.so.nice and you+me=great h@h@h@ see ya @@@@ wanna-be"
+        text = "So cool dude ... hope u can be.so.nice and you+me=great h@h@h@ see ya @@@@ wanna-be laughing_face"
 
         # When
         new_text = remove_special_characters(text)
 
         # Then
-        self.assertEqual("So cool dude   hope u can be so nice and you me great h h h  see ya   wanna-be", new_text)
+        self.assertEqual("So cool dude   hope u can be so nice and you me great h h h  see ya   wanna-be laughing_face",
+                         new_text)
 
-    def test_remove_extra_spaces(self):
+    def test_remove_single_characters(self):
         # Given
-        text = "So cool dude   hope u can be so nice and you me great h h h  see ya   wanna-be"
+        text = "So cool dude   hope u can be so nice and you me great h h h  see ya   wanna-be laughing_face"
 
         # When
-        new_text = remove_extra_spaces(text)
+        new_text = remove_single_characters(text)
 
         # Then
-        self.assertEqual("So cool dude hope u can be so nice and you me great h h h see ya wanna-be", new_text)
+        self.assertEqual("So cool dude hope can be so nice and you me great see ya wanna-be laughing_face", new_text)
+
+    def test_preprocess_text(self):
+        # Given
+        text = "feels sick, wish i was off 2moro  schoooool D: getting up at 7am D: exams D: aaarrghhhhh, supposed " \
+               "to be going to bed @ 10 :S will do soon"
+        stemmer = PorterStemmer()
+
+        # When
+        new_text = preprocess_text(text, stemmer)
+
+        # Then
+        self.assertEqual("feel sick wish 2moro schoooool tongue_sticking_out_cheeky_playful_blowing_a_raspberri"
+                         " get 7am tongue_sticking_out_cheeky_playful_blowing_a_raspberri exam "
+                         "tongue_sticking_out_cheeky_playful_blowing_a_raspberri "
+                         "aaarrghhhhh suppos go bed 10 skeptical_annoyed_undecided_uneasy_hesit soon",
+                         new_text)
